@@ -30,6 +30,8 @@ function App() {
       },
     ])
 
+    console.log(data)
+
     setSubmitting(false)
 
     if (error) {

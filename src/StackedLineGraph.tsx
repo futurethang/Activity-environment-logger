@@ -1,4 +1,5 @@
-import React, { useState } from "react"
+import { createClient } from "@supabase/supabase-js"
+import React, { useEffect, useState } from "react"
 import {
   LineChart,
   Line,
@@ -14,6 +15,38 @@ const StackedLineGraph = () => {
     start: "2023-01-01",
     end: "2023-12-31",
   })
+
+  const supabase = createClient(
+    import.meta.env.VITE_CLASS_SUPA_URL,
+    import.meta.env.VITE_CLASS_SUPA_KEY
+  )
+
+  useEffect(() => {
+    console.log(supabase)
+    const fetchData = async () => {
+      const { data, error } = await supabase
+        .from("iot")
+        .select("*")
+        .limit(5)
+        .then(({ data, error }) => {
+          console.log(data)
+          if (error) {
+            console.error("Error:", error)
+          } else {
+            console.log("Data:", data)
+          }
+        })
+
+      console.log(data)
+
+      if (error) {
+        console.error("Error fetching data", error)
+        return
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Dummy data
   const data = [

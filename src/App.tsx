@@ -11,10 +11,11 @@ function App() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState("")
 
+  console.log(import.meta.env.VITE_KH_SUPA_URL)
   // Create a single supabase client for interacting with your database
   const supabase = createClient(
-    "https://malfkxxkovvrstcczuje.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hbGZreHhrb3Z2cnN0Y2N6dWplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDE0MDM5ODMsImV4cCI6MjAxNjk3OTk4M30.GhykOM7ewxL1Rldktfv0eH3VnpqT2gzRrIDiBHMBKI8"
+    import.meta.env.VITE_KH_SUPA_URL,
+    import.meta.env.VITE_KH_SUPA_KEY
   )
 
   const handleSubmit = async (e: FormEvent) => {

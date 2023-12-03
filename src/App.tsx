@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
+import StackedLineGraph from "./StackedLineGraph"
 
 function App() {
   const [timestamp, setTimestamp] = useState("")
@@ -49,87 +50,107 @@ function App() {
 
   return (
     <div className="App p-4 w-full">
-      <form onSubmit={handleSubmit} className="max-w-md w-full mx-auto">
-        <h1 className="text-lg font-bold mb-4">Log Activity</h1>
+      <details className="mb-4">
+        <summary className="font-bold">Add Activity Log</summary>
+        <p className="text-sm">
+          Add a new activity log by filling out the form below.{" "}
+        </p>
+        <form onSubmit={handleSubmit} className="max-w-md w-full">
+          <h1 className="text-lg font-bold mb-4">Log Activity</h1>
 
-        {message && <p>{message}</p>}
+          {message && <p>{message}</p>}
 
-        <div className="mb-2">
-          <label htmlFor="timestamp" className="block">
-            Timestamp:
-          </label>
-          <input
-            type="datetime-local"
-            id="timestamp"
-            value={timestamp}
-            onChange={(e) => setTimestamp(e.target.value)}
-            className="border p-2 w-full"
-            required
-          />
+          <div className="mb-2">
+            <label htmlFor="timestamp" className="block">
+              Timestamp:
+            </label>
+            <input
+              type="datetime-local"
+              id="timestamp"
+              value={timestamp}
+              onChange={(e) => setTimestamp(e.target.value)}
+              className="border p-2 w-full rounded-md"
+              required
+            />
+          </div>
+
+          <div className="mb-2">
+            <label htmlFor="userId" className="block">
+              User ID:
+            </label>
+            <input
+              type="number"
+              id="userId"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              className="border p-2 w-full rounded-md"
+              required
+            />
+          </div>
+
+          <div className="mb-2">
+            <label htmlFor="activityType" className="block">
+              Activity Type:
+            </label>
+            <input
+              type="text"
+              id="activityType"
+              value={activityType}
+              onChange={(e) => setActivityType(e.target.value)}
+              className="border p-2 w-full rounded-md"
+              required
+            />
+          </div>
+
+          <div className="mb-2">
+            <label htmlFor="duration" className="block">
+              Duration (minutes):
+            </label>
+            <input
+              type="number"
+              id="duration"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="border p-2 w-full rounded-md"
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="additionalNotes" className="block">
+              Additional Notes:
+            </label>
+            <textarea
+              id="additionalNotes"
+              value={additionalNotes}
+              onChange={(e) => setAdditionalNotes(e.target.value)}
+              className="border p-2 w-full rounded-md"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-blue-500 text-white p-2 w-full"
+          >
+            {submitting ? "Submitting..." : "Submit"}
+          </button>
+        </form>
+      </details>
+      <details className="mb-4 transition duration-500 ease-in-out">
+        <summary className="font-bold">Activities</summary>
+        <div className="max-w-md w-full mx-auto">
+          <ul>
+            <li>Activity 1</li>
+            <li>Activity 2</li>
+            <li>Activity 3</li>
+          </ul>
         </div>
-
-        <div className="mb-2">
-          <label htmlFor="userId" className="block">
-            User ID:
-          </label>
-          <input
-            type="number"
-            id="userId"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            className="border p-2 w-full"
-            required
-          />
-        </div>
-
-        <div className="mb-2">
-          <label htmlFor="activityType" className="block">
-            Activity Type:
-          </label>
-          <input
-            type="text"
-            id="activityType"
-            value={activityType}
-            onChange={(e) => setActivityType(e.target.value)}
-            className="border p-2 w-full"
-            required
-          />
-        </div>
-
-        <div className="mb-2">
-          <label htmlFor="duration" className="block">
-            Duration (minutes):
-          </label>
-          <input
-            type="number"
-            id="duration"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            className="border p-2 w-full"
-            required
-          />
-        </div>
-
-        <div className="mb-4">
-          <label htmlFor="additionalNotes" className="block">
-            Additional Notes:
-          </label>
-          <textarea
-            id="additionalNotes"
-            value={additionalNotes}
-            onChange={(e) => setAdditionalNotes(e.target.value)}
-            className="border p-2 w-full"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-blue-500 text-white p-2 w-full"
-        >
-          {submitting ? "Submitting..." : "Submit"}
-        </button>
-      </form>
+      </details>
+      <details className="mb-4 transition duration-500 ease-in-out">
+        <summary className="font-bold">Activity + Sensor Graph</summary>
+        <StackedLineGraph />
+      </details>
     </div>
   )
 }

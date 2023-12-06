@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
-import React, { useEffect, useState } from "react"
+import moment from "moment"
+import { useContext, useEffect, useState } from "react"
 import {
   LineChart,
   Line,
@@ -7,95 +8,88 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
+  ResponsiveContainer,
 } from "recharts"
+import { Context } from "./App"
 
 const StackedLineGraph = () => {
-  const [timeRange, setTimeRange] = useState({
-    start: "2023-01-01",
-    end: "2023-12-31",
-  })
+  const [data, setData] = useState([])
+
+  const timeRange = useContext(Context)
 
   const supabase = createClient(
-    import.meta.env.VITE_CLASS_SUPA_URL,
-    import.meta.env.VITE_CLASS_SUPA_KEY
+    import.meta.env.VITE_KH_SUPA_URL,
+    import.meta.env.VITE_KH_SUPA_KEY
   )
 
   useEffect(() => {
     console.log(supabase)
+    console.log(timeRange)
     const fetchData = async () => {
-      const { data, error } = await supabase
-        .from("iot")
-        .select("*")
-        .limit(5)
-        .then(({ data, error }) => {
-          console.log(data)
-          if (error) {
-            console.error("Error:", error)
-          } else {
-            console.log("Data:", data)
-          }
-        })
-
-      console.log(data)
-
-      if (error) {
-        console.error("Error fetching data", error)
-        return
+      try {
+        let { data, error } = await supabase
+          .from("sensor_data")
+          .select("*")
+          .gt("minute", timeRange.start)
+          .lt("minute", timeRange.end)
+        // .limit(10)
+        setData(data)
+      } catch (error) {
+        console.log(error)
+      } finally {
       }
+      console.log(data)
     }
 
     fetchData()
-  }, [])
+  }, [timeRange])
 
-  // Dummy data
-  const data = [
-    { date: "2023-01-01", value1: 4000, value2: 2400 },
-    { date: "2023-02-01", value1: 3000, value2: 1398 },
-    // ... more data points
-  ]
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTimeRange({ ...timeRange, [e.target.name]: e.target.value })
+  const formatXAxis = (tickItem: any) => {
+    // Use moment.js to format the date
+    return moment(tickItem).format("MM-DD-HH")
   }
 
   return (
     <div>
       <div className="my-4">
-        <LineChart
-          width={320}
-          height={300}
-          data={data}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Line type="monotone" dataKey="value1" stroke="#8884d8" />
-          <Line type="monotone" dataKey="value2" stroke="#82ca9d" />
-        </LineChart>
-      </div>
-      <div>
-        <input
-          type="date"
-          name="start"
-          value={timeRange.start}
-          onChange={handleChange}
-          className="border p-2 rounded-md"
-        />
-        <span className="mx-2">To</span>
-        <input
-          type="date"
-          name="end"
-          value={timeRange.end}
-          onChange={handleChange}
-          className="border p-2 rounded-md"
-        />
+        <ResponsiveContainer width="100%" height={400}>
+          <LineChart
+            data={data}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="minute" tickFormatter={formatXAxis} />
+            <YAxis
+              label={{
+                value: "Temperature (°C)",
+                angle: -90,
+                position: "insideLeft",
+              }}
+            />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="Temperature (C) - median"
+              stroke="#8884d8"
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )
 }
 
 export default StackedLineGraph
+
+// {
+//   "minute": "2023-11-25T18:11:00+00:00",
+//   "device_id": "KevinHydeIoT",
+//   "Temperature (C) - median": 24.1689,
+//   "CO2 (ppm) - median": null,
+//   "Relative Humidity (%) - median": 36.8653,
+//   "PM2.5 - median": null,
+//   "PM10.0 - median": null,
+//   "Battery (V) - median": 4.2175,
+//   "Battery (%) - median": 103.828
+// }

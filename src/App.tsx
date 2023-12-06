@@ -1,6 +1,9 @@
-import { FormEvent, useState } from "react"
+import { FormEvent, useState, createContext, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import StackedLineGraph from "./StackedLineGraph"
+import moment from "moment"
+
+export const Context = createContext({})
 
 function App() {
   const [timestamp, setTimestamp] = useState("")
@@ -10,13 +13,40 @@ function App() {
   const [additionalNotes, setAdditionalNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState("")
+  const [activityData, setActivityData] = useState([])
+  const [timeRange, setTimeRange] = useState({
+    start: "2023-11-25",
+    end: "2023-11-28",
+  })
 
-  console.log(import.meta.env.VITE_KH_SUPA_URL)
-  // Create a single supabase client for interacting with your database
   const supabase = createClient(
     import.meta.env.VITE_KH_SUPA_URL,
     import.meta.env.VITE_KH_SUPA_KEY
   )
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        let { data, error } = await supabase
+          .from("activities")
+          .select("*")
+          .gt("timestamp", timeRange.start)
+          .lt("timestamp", timeRange.end)
+        // .limit(10)
+        setActivityData(data)
+      } catch (error) {
+        console.log(error)
+      } finally {
+      }
+      console.log(activityData)
+    }
+
+    fetchData()
+  }, [timeRange])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTimeRange({ ...timeRange, [e.target.name]: e.target.value })
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -31,8 +61,6 @@ function App() {
         additional_notes: additionalNotes,
       },
     ])
-
-    console.log(data)
 
     setSubmitting(false)
 
@@ -138,20 +166,50 @@ function App() {
           </button>
         </form>
       </details>
-      <details className="mb-4 transition duration-500 ease-in-out">
-        <summary className="font-bold">Activities</summary>
-        <div className="max-w-md w-full mx-auto">
-          <ul>
-            <li>Activity 1</li>
-            <li>Activity 2</li>
-            <li>Activity 3</li>
-          </ul>
-        </div>
-      </details>
-      <details className="mb-4 transition duration-500 ease-in-out">
-        <summary className="font-bold">Activity + Sensor Graph</summary>
-        <StackedLineGraph />
-      </details>
+      <div className="mb-4">
+        <input
+          type="date"
+          name="start"
+          value={timeRange.start}
+          onChange={handleChange}
+          className="border p-2 rounded-md"
+        />
+        <span className="mx-2">To</span>
+        <input
+          type="date"
+          name="end"
+          value={timeRange.end}
+          onChange={handleChange}
+          className="border p-2 rounded-md"
+        />
+      </div>
+      <Context.Provider value={timeRange}>
+        <details className="mb-4 transition duration-500 ease-in-out">
+          <summary className="font-bold">Activity + Sensor Graph</summary>
+          <StackedLineGraph />
+        </details>
+        <details className="mb-4 transition duration-500 ease-in-out">
+          <summary className="font-bold">Activities</summary>
+          <div className="max-w-md w-full mx-auto">
+            <ul>
+              {activityData.map((activity: any) => {
+                const formattedDate = moment(activity.timestamp).format(
+                  "MM-DD-YYYY HH:mm:ss"
+                )
+                return (
+                  <li>
+                    <span>{activity.activity_type}</span>
+                    <span className="ml-4">{formattedDate}</span>
+                    <span className="ml-4">
+                      for {activity.duration} minutes
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </details>
+      </Context.Provider>
     </div>
   )
 }

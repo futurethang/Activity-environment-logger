@@ -14,9 +14,10 @@ function App() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState("")
   const [activityData, setActivityData] = useState([])
+  const [sensorData, setSensorData] = useState([])
   const [timeRange, setTimeRange] = useState({
-    start: "2023-11-25",
-    end: "2023-11-28",
+    start: "2023-12-02",
+    end: "2023-12-03",
   })
 
   const supabase = createClient(
@@ -25,23 +26,42 @@ function App() {
   )
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        let { data, error } = await supabase
-          .from("activities")
-          .select("*")
-          .gt("timestamp", timeRange.start)
-          .lt("timestamp", timeRange.end)
-        // .limit(10)
-        setActivityData(data)
-      } catch (error) {
-        console.log(error)
-      } finally {
+    const fetchActivityData = async () => {
+      const { data, error } = await supabase
+        .from("activities")
+        .select("*")
+        .gt("timestamp", timeRange.start)
+        .lt("timestamp", timeRange.end)
+
+      if (error) {
+        throw error
       }
-      console.log(activityData)
+      return data
     }
 
-    fetchData()
+    const fetchSensorData = async () => {
+      const { data, error } = await supabase
+        .from("sensor_data")
+        .select("*")
+        .gt("minute", timeRange.start)
+        .lt("minute", timeRange.end)
+
+      if (error) {
+        throw error
+      }
+      return data
+    }
+
+    Promise.all([fetchActivityData(), fetchSensorData()])
+      .then(([aData, sData]) => {
+        // @ts-ignore
+        setActivityData(aData)
+        // @ts-ignore
+        setSensorData(sData)
+      })
+      .catch((error) => {
+        console.log("An error occurred:", error)
+      })
   }, [timeRange])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,8 +203,8 @@ function App() {
           className="border p-2 rounded-md"
         />
       </div>
-      <Context.Provider value={timeRange}>
-        <details className="mb-4 transition duration-500 ease-in-out">
+      <Context.Provider value={{ activityData, sensorData }}>
+        <details open className="mb-4 transition duration-500 ease-in-out">
           <summary className="font-bold">Activity + Sensor Graph</summary>
           <StackedLineGraph />
         </details>
@@ -192,12 +212,12 @@ function App() {
           <summary className="font-bold">Activities</summary>
           <div className="max-w-md w-full mx-auto">
             <ul>
-              {activityData.map((activity: any) => {
+              {activityData.map((activity: any, i) => {
                 const formattedDate = moment(activity.timestamp).format(
                   "MM-DD-YYYY HH:mm:ss"
                 )
                 return (
-                  <li>
+                  <li key={`${activity.timestamp}-${i}`}>
                     <span>{activity.activity_type}</span>
                     <span className="ml-4">{formattedDate}</span>
                     <span className="ml-4">

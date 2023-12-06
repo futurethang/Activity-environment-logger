@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js"
 import moment from "moment"
 import { useContext, useEffect, useState } from "react"
 import {
@@ -9,52 +8,37 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceArea,
 } from "recharts"
 import { Context } from "./App"
 
 const StackedLineGraph = () => {
-  const [data, setData] = useState([])
-
-  const timeRange = useContext(Context)
-
-  const supabase = createClient(
-    import.meta.env.VITE_KH_SUPA_URL,
-    import.meta.env.VITE_KH_SUPA_KEY
-  )
-
-  useEffect(() => {
-    console.log(supabase)
-    console.log(timeRange)
-    const fetchData = async () => {
-      try {
-        let { data, error } = await supabase
-          .from("sensor_data")
-          .select("*")
-          .gt("minute", timeRange.start)
-          .lt("minute", timeRange.end)
-        // .limit(10)
-        setData(data)
-      } catch (error) {
-        console.log(error)
-      } finally {
-      }
-      console.log(data)
-    }
-
-    fetchData()
-  }, [timeRange])
+  // const [data, setData] = useState({})
+  const { activityData, sensorData } = useContext(Context)
 
   const formatXAxis = (tickItem: any) => {
-    // Use moment.js to format the date
-    return moment(tickItem).format("MM-DD-HH")
+    console.log(tickItem)
+    return moment(tickItem).format("DD")
   }
 
+  const formattedActivities = activityData.map((activity) => {
+    const endTimeMoment = moment
+      .utc(activity.timestamp)
+      .add(activity.duration, "minutes")
+
+    // Manually format the string to keep the UTC offset
+    const endTime = endTimeMoment.format("YYYY-MM-DDTHH:mm:ss+00:00")
+
+    return { ...activity, endTime }
+  })
+
+  console.log(sensorData)
   return (
     <div>
       <div className="my-4">
         <ResponsiveContainer width="100%" height={400}>
           <LineChart
-            data={data}
+            data={sensorData}
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -73,6 +57,22 @@ const StackedLineGraph = () => {
               stroke="#8884d8"
               dot={false}
             />
+            {formattedActivities.map((activity) => {
+              // debugger
+              console.log(activity.timestamp, activity.endTime)
+              console.log(activity.activity_type)
+              return (
+                <ReferenceArea
+                  x1={activity.timestamp}
+                  x2={activity.endTime}
+                  ifOverflow="extendDomain"
+                  label={activity.activity_type}
+                  strokeOpacity={0.3}
+                  fill="green"
+                  fillOpacity={0.3}
+                />
+              )
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>

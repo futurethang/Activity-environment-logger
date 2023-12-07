@@ -1,6 +1,7 @@
 import { FormEvent, useState, createContext, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import StackedLineGraph from "./StackedLineGraph"
+import { convertToPacificTime, convertToUTC } from "./utils/timezone"
 import moment from "moment"
 
 export const Context = createContext({})
@@ -15,9 +16,10 @@ function App() {
   const [message, setMessage] = useState("")
   const [activityData, setActivityData] = useState([])
   const [sensorData, setSensorData] = useState([])
+  const [timeScope, setTimeScope] = useState("minute")
   const [timeRange, setTimeRange] = useState({
-    start: "2023-12-02",
-    end: "2023-12-03",
+    start: "2023-12-02 01:30:00",
+    end: "2023-12-02 13:30:00",
   })
 
   const supabase = createClient(
@@ -26,12 +28,15 @@ function App() {
   )
 
   useEffect(() => {
+    const pstStart = convertToUTC(timeRange.start)
+    const pstEnd = convertToUTC(timeRange.end)
+
     const fetchActivityData = async () => {
       const { data, error } = await supabase
         .from("activities")
         .select("*")
-        .gt("timestamp", timeRange.start)
-        .lt("timestamp", timeRange.end)
+        .gt("timestamp", pstStart)
+        .lt("timestamp", pstEnd)
 
       if (error) {
         throw error
@@ -40,16 +45,43 @@ function App() {
     }
 
     const fetchSensorData = async () => {
-      const { data, error } = await supabase
-        .from("sensor_data")
-        .select("*")
-        .gt("minute", timeRange.start)
-        .lt("minute", timeRange.end)
+      const start_date = new Date(pstStart)
+      const end_date = new Date(pstEnd)
 
-      if (error) {
-        throw error
+      const diffInMilliseconds = Math.abs(
+        end_date.getTime() - start_date.getTime()
+      )
+      const diffInMinutes = Math.floor(diffInMilliseconds / 1000 / 60)
+
+      let scopedData
+
+      if (diffInMinutes < 1000) {
+        setTimeScope("minute")
+        console.log("less than 1000 minutes")
+        // remove timezone from start_date
+
+        const { data, error } = await supabase
+          // OLD REQUEST BEFORE HOUR SUMMARY RPC WAS CREATED
+          .from("sensor_data_2")
+          .select("*")
+          .gt("minute", start_date.toISOString())
+          .lt("minute", end_date.toISOString())
+
+        scopedData = data
+      } else if (diffInMinutes < 1000 * 24) {
+        setTimeScope("hour")
+        console.log("less than 1000 hours")
+        const { data, error } = await supabase
+          // RPC STYLE REQUEST TO GET BY HOUR
+          .rpc("get_sensor_data_by_hour", {
+            start_date,
+            end_date,
+          })
+        scopedData = data
       }
-      return data
+
+      console.log(scopedData)
+      return scopedData
     }
 
     Promise.all([fetchActivityData(), fetchSensorData()])
@@ -188,7 +220,7 @@ function App() {
       </details>
       <div className="mb-4">
         <input
-          type="date"
+          type="datetime-local"
           name="start"
           value={timeRange.start}
           onChange={handleChange}
@@ -196,30 +228,33 @@ function App() {
         />
         <span className="mx-2">To</span>
         <input
-          type="date"
+          type="datetime-local"
           name="end"
           value={timeRange.end}
           onChange={handleChange}
           className="border p-2 rounded-md"
         />
       </div>
-      <Context.Provider value={{ activityData, sensorData }}>
+      <Context.Provider value={{ activityData, sensorData, timeScope }}>
         <details open className="mb-4 transition duration-500 ease-in-out">
           <summary className="font-bold">Activity + Sensor Graph</summary>
           <StackedLineGraph />
         </details>
-        <details className="mb-4 transition duration-500 ease-in-out">
+        <details open className="mb-4 transition duration-500 ease-in-out">
           <summary className="font-bold">Activities</summary>
           <div className="max-w-md w-full mx-auto">
             <ul>
               {activityData.map((activity: any, i) => {
-                const formattedDate = moment(activity.timestamp).format(
-                  "MM-DD-YYYY HH:mm:ss"
-                )
+                const formattedDate = moment(
+                  convertToPacificTime(activity.timestamp)
+                ).format("MM/DD hh:mm a")
                 return (
-                  <li key={`${activity.timestamp}-${i}`}>
-                    <span>{activity.activity_type}</span>
+                  <li
+                    key={`${activity.timestamp}-${i}`}
+                    className="grid grid-flow-col gap-2"
+                  >
                     <span className="ml-4">{formattedDate}</span>
+                    <span>{activity.activity_type}</span>
                     <span className="ml-4">
                       for {activity.duration} minutes
                     </span>

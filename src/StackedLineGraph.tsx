@@ -9,16 +9,19 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceArea,
+  ReferenceLine,
 } from "recharts"
 import { Context } from "./App"
+import { roundToNearestHour } from "./utils/timezone"
 
 const StackedLineGraph = () => {
   // const [data, setData] = useState({})
-  const { activityData, sensorData } = useContext(Context)
+  const { activityData, sensorData, timeScope } = useContext(Context)
 
   const formatXAxis = (tickItem: any) => {
-    console.log(tickItem)
-    return moment(tickItem).format("DD")
+    // console.log(tickItem)
+    // console.log(moment(tickItem).format("hh:mm a"))
+    return moment(tickItem).format("hh:mm a")
   }
 
   const formattedActivities = activityData.map((activity) => {
@@ -32,7 +35,6 @@ const StackedLineGraph = () => {
     return { ...activity, endTime }
   })
 
-  console.log(sensorData)
   return (
     <div>
       <div className="my-4">
@@ -42,10 +44,10 @@ const StackedLineGraph = () => {
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="minute" tickFormatter={formatXAxis} />
+            <XAxis dataKey={timeScope} tickFormatter={formatXAxis} />
             <YAxis
               label={{
-                value: "Temperature (°C)",
+                value: "Temperature / Humidity",
                 angle: -90,
                 position: "insideLeft",
               }}
@@ -53,15 +55,26 @@ const StackedLineGraph = () => {
             <Tooltip />
             <Line
               type="monotone"
-              dataKey="Temperature (C) - median"
+              dataKey={
+                timeScope === "minute" ? "temperature_c" : "average_temperature"
+              }
               stroke="#8884d8"
               dot={false}
             />
+            <Line
+              type="monotone"
+              dataKey={
+                timeScope === "minute"
+                  ? "humidity_relative"
+                  : "average_humidity"
+              }
+              stroke="#9fc5e8"
+              dot={false}
+            />
             {formattedActivities.map((activity) => {
-              // debugger
-              console.log(activity.timestamp, activity.endTime)
-              console.log(activity.activity_type)
-              return (
+              console.log(roundToNearestHour(activity.timestamp))
+
+              return timeScope === "minute" ? (
                 <ReferenceArea
                   x1={activity.timestamp}
                   x2={activity.endTime}
@@ -70,6 +83,17 @@ const StackedLineGraph = () => {
                   strokeOpacity={0.3}
                   fill="green"
                   fillOpacity={0.3}
+                />
+              ) : (
+                <ReferenceLine
+                  x={moment(roundToNearestHour(activity.timestamp)).format(
+                    "hh:mm a"
+                  )}
+                  stroke="green"
+                  label={{
+                    value: activity.activity_type,
+                  }}
+                  strokeOpacity={0.7}
                 />
               )
             })}

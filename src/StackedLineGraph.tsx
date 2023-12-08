@@ -47,9 +47,8 @@ const StackedLineGraph = () => {
             <XAxis dataKey={timeScope} tickFormatter={formatXAxis} />
             <YAxis
               label={{
-                value: "Temperature / Humidity",
+                value: "Temperature C° / Humidity %",
                 angle: -90,
-                position: "insideLeft",
               }}
             />
             <Tooltip />
@@ -71,32 +70,7 @@ const StackedLineGraph = () => {
               stroke="#9fc5e8"
               dot={false}
             />
-            {formattedActivities.map((activity) => {
-              console.log(roundToNearestHour(activity.timestamp))
-
-              return timeScope === "minute" ? (
-                <ReferenceArea
-                  x1={activity.timestamp}
-                  x2={activity.endTime}
-                  ifOverflow="extendDomain"
-                  label={activity.activity_type}
-                  strokeOpacity={0.3}
-                  fill="green"
-                  fillOpacity={0.3}
-                />
-              ) : (
-                <ReferenceLine
-                  x={moment(roundToNearestHour(activity.timestamp)).format(
-                    "hh:mm a"
-                  )}
-                  stroke="green"
-                  label={{
-                    value: activity.activity_type,
-                  }}
-                  strokeOpacity={0.7}
-                />
-              )
-            })}
+            {stackAreas(formattedActivities, timeScope)}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -106,14 +80,47 @@ const StackedLineGraph = () => {
 
 export default StackedLineGraph
 
-// {
-//   "minute": "2023-11-25T18:11:00+00:00",
-//   "device_id": "KevinHydeIoT",
-//   "Temperature (C) - median": 24.1689,
-//   "CO2 (ppm) - median": null,
-//   "Relative Humidity (%) - median": 36.8653,
-//   "PM2.5 - median": null,
-//   "PM10.0 - median": null,
-//   "Battery (V) - median": 4.2175,
-//   "Battery (%) - median": 103.828
-// }
+const stackAreas = (formattedActivities, timeScope) => {
+  let baseline = 0
+
+  return formattedActivities.map((activity) => {
+    baseline += 10
+    return timeScope === "minute" ? (
+      <ReferenceArea
+        x1={activity.timestamp}
+        x2={activity.endTime}
+        y1={baseline}
+        y2={baseline + 10}
+        ifOverflow="extendDomain"
+        // label={<CustomLabel yOffset={0} text={activity.activity_type} />}
+        label={toTitleCase(activity.activity_type)}
+        strokeOpacity={0.3}
+        fill="green"
+        fillOpacity={0.3}
+      />
+    ) : (
+      <ReferenceLine
+        x={moment(roundToNearestHour(activity.timestamp)).format("hh:mm a")}
+        stroke="green"
+        label={{
+          value: activity.activity_type,
+        }}
+        strokeOpacity={0.7}
+      />
+    )
+  })
+}
+
+function toTitleCase(str) {
+  return str.replace(/\w\S*/g, function (txt) {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+  })
+}
+
+const CustomLabel = ({ yOffset, text }: { yOffset: number; text: string }) => {
+  return (
+    <text y={yOffset} dy={-4} fontSize={10} textAnchor="middle">
+      {text}
+    </text>
+  )
+}

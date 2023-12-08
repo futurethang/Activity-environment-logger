@@ -1,12 +1,49 @@
-import { FormEvent, useState, createContext, useEffect } from "react"
+import { useState, createContext, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import StackedLineGraph from "./StackedLineGraph"
 import { convertToPacificTime, convertToUTC } from "./utils/timezone"
 import moment from "moment"
+import Header from "./Header"
+import { AwesomeButton } from "react-awesome-button"
+import "react-awesome-button/dist/styles.css" // Import default styles
+import Modal from "react-modal"
 
 export const Context = createContext({})
 
+const customModalStyles = {
+  content: {
+    width: "75%",
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    borderRadius: "1rem",
+    backgroundColor: "#00a896",
+    padding: "1rem",
+  },
+}
+
+const customStyles = {
+  "--button-default-height": "72px",
+  "--button-default-font-size": "20px",
+  "--button-default-border-radius": "16px",
+  "--button-horizontal-padding": "26px",
+  "--button-raise-level": "10px",
+  "--button-hover-pressure": "1.25",
+  "--transform-speed": "0.225s",
+  "--button-primary-color": "#00a896", // Blueish green color
+  "--button-primary-color-dark": "#007f6b", // A darker shade for the hover state
+  "--button-primary-color-light": "#fff", // A lighter shade for the active state
+  "--button-primary-color-hover": "#00a896", // A lighter shade for the active state
+  "--button-primary-color-active": "#007f6b", // A lighter shade for the active state
+} as React.CSSProperties
+
+Modal.setAppElement("#root") // Assuming your root element has the ID 'root'
+
 function App() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [timestamp, setTimestamp] = useState("")
   const [userId, setUserId] = useState("")
   const [activityType, setActivityType] = useState("")
@@ -26,6 +63,19 @@ function App() {
     import.meta.env.VITE_KH_SUPA_URL,
     import.meta.env.VITE_KH_SUPA_KEY
   )
+
+  // TODO: put this in action when DB is updated to real time, not a HEX dump
+  // useLayoutEffect(() => {
+  //   const now = new Date()
+  //   const sixteenHoursAgo = new Date(now.getTime() - 1000 * 60 * 60 * 16)
+
+  //   setTimeRange({
+  //     start: sixteenHoursAgo.toISOString(),
+  //     end: now.toISOString(),
+  //   })
+
+  //   console.log("timeRange", timeRange)
+  // }, [])
 
   useEffect(() => {
     const pstStart = convertToUTC(timeRange.start)
@@ -58,10 +108,8 @@ function App() {
       if (diffInMinutes < 1000) {
         setTimeScope("minute")
         console.log("less than 1000 minutes")
-        // remove timezone from start_date
 
         const { data, error } = await supabase
-          // OLD REQUEST BEFORE HOUR SUMMARY RPC WAS CREATED
           .from("sensor_data_2")
           .select("*")
           .gt("minute", start_date.toISOString())
@@ -70,7 +118,7 @@ function App() {
         scopedData = data
       } else if (diffInMinutes < 1000 * 24) {
         setTimeScope("hour")
-        console.log("less than 1000 hours")
+        console.log("more than 1000 minutes")
         const { data, error } = await supabase
           // RPC STYLE REQUEST TO GET BY HOUR
           .rpc("get_sensor_data_by_hour", {
@@ -80,7 +128,7 @@ function App() {
         scopedData = data
       }
 
-      console.log(scopedData)
+      // console.log(scopedData)
       return scopedData
     }
 
@@ -100,22 +148,24 @@ function App() {
     setTimeRange({ ...timeRange, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
+  const quickLog = async () => {
+    if (!activityType) {
+      setMessage("Please enter an activity type.")
+      return
+    }
 
+    setSubmitting(true)
     const { data, error } = await supabase.from("activities").insert([
       {
-        timestamp,
-        user_id: parseInt(userId),
+        timestamp: new Date(),
+        user_id: 1,
         activity_type: activityType,
-        duration: parseInt(duration),
-        additional_notes: additionalNotes,
+        duration: null,
+        additional_notes: null,
       },
     ])
-
     setSubmitting(false)
-
+    setIsModalOpen(false)
     if (error) {
       setMessage(`Error: ${error.message}`)
     } else {
@@ -130,95 +180,47 @@ function App() {
   }
 
   return (
-    <div className="App p-4 w-full">
-      <details className="mb-4">
-        <summary className="font-bold">Add Activity Log</summary>
-        <p className="text-sm">
-          Add a new activity log by filling out the form below.{" "}
-        </p>
-        <form onSubmit={handleSubmit} className="max-w-md w-full">
-          <h1 className="text-lg font-bold mb-4">Log Activity</h1>
-
-          {message && <p>{message}</p>}
-
-          <div className="mb-2">
-            <label htmlFor="timestamp" className="block">
-              Timestamp:
-            </label>
-            <input
-              type="datetime-local"
-              id="timestamp"
-              value={timestamp}
-              onChange={(e) => setTimestamp(e.target.value)}
-              className="border p-2 w-full rounded-md"
-              required
-            />
-          </div>
-
-          <div className="mb-2">
-            <label htmlFor="userId" className="block">
-              User ID:
-            </label>
-            <input
-              type="number"
-              id="userId"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="border p-2 w-full rounded-md"
-              required
-            />
-          </div>
-
-          <div className="mb-2">
-            <label htmlFor="activityType" className="block">
-              Activity Type:
-            </label>
-            <input
-              type="text"
-              id="activityType"
-              value={activityType}
-              onChange={(e) => setActivityType(e.target.value)}
-              className="border p-2 w-full rounded-md"
-              required
-            />
-          </div>
-
-          <div className="mb-2">
-            <label htmlFor="duration" className="block">
-              Duration (minutes):
-            </label>
-            <input
-              type="number"
-              id="duration"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="border p-2 w-full rounded-md"
-              required
-            />
-          </div>
-
-          <div className="mb-4">
-            <label htmlFor="additionalNotes" className="block">
-              Additional Notes:
-            </label>
-            <textarea
-              id="additionalNotes"
-              value={additionalNotes}
-              onChange={(e) => setAdditionalNotes(e.target.value)}
-              className="border p-2 w-full rounded-md"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="bg-blue-500 text-white p-2 w-full"
-          >
-            {submitting ? "Submitting..." : "Submit"}
+    <div className="App p-8 w-full sm:w-[600px] mx-auto">
+      <Header />
+      <div className="w-full flex justify-center">
+        <AwesomeButton
+          style={customStyles}
+          type="primary"
+          onPress={() => {
+            console.log("Log Activity button clicked")
+            setIsModalOpen(true)
+          }}
+        >
+          Log Activity
+        </AwesomeButton>
+      </div>
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={() => setIsModalOpen(false)}
+        style={customModalStyles}
+        contentLabel="Activity Modal"
+      >
+        <div className="flex gap-5">
+          <input
+            className="border p-2 w-full rounded-md"
+            type="text"
+            placeholder="Activity Type"
+            value={activityType}
+            onChange={(e) => setActivityType(e.target.value)}
+            required
+          />
+          <button onClick={quickLog} disabled={submitting}>
+            go
           </button>
-        </form>
-      </details>
-      <div className="mb-4">
+        </div>
+        {message && (
+          <p className="text-sm text-red-100 font-roboto italic mt-2">
+            {message}
+          </p>
+        )}
+      </Modal>
+
+      <div className="mb-4 mt-8">
         <input
           type="datetime-local"
           name="start"
@@ -236,13 +238,10 @@ function App() {
         />
       </div>
       <Context.Provider value={{ activityData, sensorData, timeScope }}>
-        <details open className="mb-4 transition duration-500 ease-in-out">
-          <summary className="font-bold">Activity + Sensor Graph</summary>
-          <StackedLineGraph />
-        </details>
+        <StackedLineGraph />
         <details open className="mb-4 transition duration-500 ease-in-out">
           <summary className="font-bold">Activities</summary>
-          <div className="max-w-md w-full mx-auto">
+          <div className=" w-full">
             <ul>
               {activityData.map((activity: any, i) => {
                 const formattedDate = moment(
@@ -251,13 +250,18 @@ function App() {
                 return (
                   <li
                     key={`${activity.timestamp}-${i}`}
-                    className="grid grid-flow-col gap-2"
+                    className="grid grid-cols-4 gap-2 mb-1 font-roboto-mono text-xs"
                   >
                     <span className="ml-4">{formattedDate}</span>
-                    <span>{activity.activity_type}</span>
+                    <span className="font-bold">{activity.activity_type}</span>
                     <span className="ml-4">
                       for {activity.duration} minutes
                     </span>
+                    <div className="flex justify-end">
+                      <button className="bg-blue-400 text-xs p-1 w-12 h-8 rounded-sm">
+                        edit
+                      </button>
+                    </div>
                   </li>
                 )
               })}

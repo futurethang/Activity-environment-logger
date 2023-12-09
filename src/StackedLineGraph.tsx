@@ -1,5 +1,5 @@
 import moment from "moment"
-import { useContext, useEffect, useState } from "react"
+import { useContext } from "react"
 import {
   LineChart,
   Line,
@@ -13,27 +13,28 @@ import {
 } from "recharts"
 import { Context } from "./App"
 import { roundToNearestHour } from "./utils/timezone"
+import { Activity } from "./global"
+
+type ExtendedActivity = Activity & { endTime: string }
 
 const StackedLineGraph = () => {
-  // const [data, setData] = useState({})
   const { activityData, sensorData, timeScope } = useContext(Context)
 
-  const formatXAxis = (tickItem: any) => {
-    // console.log(tickItem)
-    // console.log(moment(tickItem).format("hh:mm a"))
+  const formatXAxis = (tickItem: string) => {
     return moment(tickItem).format("hh:mm a")
   }
 
-  const formattedActivities = activityData.map((activity) => {
-    const endTimeMoment = moment
-      .utc(activity.timestamp)
-      .add(activity.duration, "minutes")
+  const formattedActivities = activityData.map(
+    (activity: Activity): ExtendedActivity => {
+      const endTimeMoment = moment
+        .utc(activity.timestamp)
+        .add(activity.duration, "minutes")
 
-    // Manually format the string to keep the UTC offset
-    const endTime = endTimeMoment.format("YYYY-MM-DDTHH:mm:ss+00:00")
+      const endTime = endTimeMoment.format("YYYY-MM-DDTHH:mm:ss+00:00")
 
-    return { ...activity, endTime }
-  })
+      return { ...activity, endTime }
+    }
+  )
 
   return (
     <div>
@@ -80,7 +81,10 @@ const StackedLineGraph = () => {
 
 export default StackedLineGraph
 
-const stackAreas = (formattedActivities, timeScope) => {
+const stackAreas = (
+  formattedActivities: ExtendedActivity[],
+  timeScope: string
+) => {
   let baseline = 0
 
   return formattedActivities.map((activity) => {
@@ -92,18 +96,17 @@ const stackAreas = (formattedActivities, timeScope) => {
         y1={baseline}
         y2={baseline + 10}
         ifOverflow="extendDomain"
-        // label={<CustomLabel yOffset={0} text={activity.activity_type} />}
-        label={toTitleCase(activity.activity_type)}
+        label={toTitleCase(activity.activity_type || "")}
         strokeOpacity={0.3}
         fill="green"
-        fillOpacity={0.3}
+        fillOpacity={0.5}
       />
     ) : (
       <ReferenceLine
         x={moment(roundToNearestHour(activity.timestamp)).format("hh:mm a")}
         stroke="green"
         label={{
-          value: activity.activity_type,
+          value: activity.activity_type || "Unknown",
         }}
         strokeOpacity={0.7}
       />
@@ -111,16 +114,8 @@ const stackAreas = (formattedActivities, timeScope) => {
   })
 }
 
-function toTitleCase(str) {
+function toTitleCase(str: string) {
   return str.replace(/\w\S*/g, function (txt) {
     return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
   })
-}
-
-const CustomLabel = ({ yOffset, text }: { yOffset: number; text: string }) => {
-  return (
-    <text y={yOffset} dy={-4} fontSize={10} textAnchor="middle">
-      {text}
-    </text>
-  )
 }

@@ -4,55 +4,21 @@ import StackedLineGraph from "./StackedLineGraph"
 import { convertToPacificTime, convertToUTC } from "./utils/timezone"
 import moment from "moment"
 import Header from "./Header"
-import { AwesomeButton } from "react-awesome-button"
 import "react-awesome-button/dist/styles.css" // Import default styles
 import Modal from "react-modal"
 import { Activity, ContextType } from "./global"
 import React from "react"
+import ActivityUi from "./ActivityUi"
 
 export const Context = React.createContext<ContextType>({
   activityData: [],
-  sensorData: [], // Provide appropriate default values
-  timeScope: {}, // Replace with a suitable default value
+  sensorData: [],
+  timeScope: {},
 })
-
-const customModalStyles = {
-  content: {
-    width: "75%",
-    top: "50%",
-    left: "50%",
-    right: "auto",
-    bottom: "auto",
-    marginRight: "-50%",
-    transform: "translate(-50%, -50%)",
-    borderRadius: "1rem",
-    backgroundColor: "#00a896",
-    padding: "1rem",
-  },
-}
-
-const customStyles = {
-  "--button-default-height": "72px",
-  "--button-default-font-size": "20px",
-  "--button-default-border-radius": "16px",
-  "--button-horizontal-padding": "26px",
-  "--button-raise-level": "10px",
-  "--button-hover-pressure": "1.25",
-  "--transform-speed": "0.225s",
-  "--button-primary-color": "#00a896", // Blueish green color
-  "--button-primary-color-dark": "#007f6b", // A darker shade for the hover state
-  "--button-primary-color-light": "#fff", // A lighter shade for the active state
-  "--button-primary-color-hover": "#00a896", // A lighter shade for the active state
-  "--button-primary-color-active": "#007f6b", // A lighter shade for the active state
-} as React.CSSProperties
 
 Modal.setAppElement("#root")
 
 function App() {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [activityType, setActivityType] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState("")
   const [activityData, setActivityData] = useState<Activity[]>([])
   const [sensorData, setSensorData] = useState([])
   const [timeScope, setTimeScope] = useState("minute")
@@ -177,74 +143,10 @@ function App() {
     })
   }
 
-  const quickLog = async () => {
-    if (!activityType) {
-      setMessage("Please enter an activity type.")
-      return
-    }
-
-    setSubmitting(true)
-    const { data, error } = await supabase.from("activities").insert([
-      {
-        timestamp: new Date(),
-        user_id: 1,
-        activity_type: activityType,
-        duration: null,
-        additional_notes: null,
-      },
-    ])
-    console.info("data", data)
-    setSubmitting(false)
-    setIsModalOpen(false)
-    if (error) {
-      setMessage(`Error: ${error.message}`)
-    } else {
-      setMessage("Activity logged successfully!")
-      setActivityType("")
-    }
-  }
-
   return (
     <div className="App p-8 w-full sm:w-[600px] mx-auto">
       <Header />
-      <div className="w-full flex justify-center">
-        <AwesomeButton
-          style={customStyles}
-          type="primary"
-          onPress={() => {
-            console.log("Log Activity button clicked")
-            setIsModalOpen(true)
-          }}
-        >
-          Log Activity
-        </AwesomeButton>
-      </div>
-      <Modal
-        isOpen={isModalOpen}
-        onRequestClose={() => setIsModalOpen(false)}
-        style={customModalStyles}
-        contentLabel="Activity Modal"
-      >
-        <div className="flex gap-5">
-          <input
-            className="border p-2 w-full rounded-md"
-            type="text"
-            placeholder="Activity Type"
-            value={activityType}
-            onChange={(e) => setActivityType(e.target.value)}
-            required
-          />
-          <button onClick={quickLog} disabled={submitting}>
-            go
-          </button>
-        </div>
-        {message && (
-          <p className="text-sm text-red-100 font-roboto italic mt-2">
-            {message}
-          </p>
-        )}
-      </Modal>
-
+      <ActivityUi supabase={supabase} />
       <div className="mb-4 mt-8">
         <input
           type="datetime-local"

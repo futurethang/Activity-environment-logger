@@ -91,7 +91,7 @@ const stackAreas = (
     baseline += 10
     return timeScope === "minute" ? (
       <ReferenceArea
-        x1={activity.timestamp}
+        x1={activity.timestamp.toString()}
         x2={activity.endTime}
         y1={baseline}
         y2={baseline + 10}

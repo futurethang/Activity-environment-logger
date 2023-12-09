@@ -1,5 +1,6 @@
 export interface Activity {
-  timestamp: string // assuming ISO string format
+  id: number
+  timestamp: Date
   user_id: number
   activity_type: string | null
   duration: number | null
@@ -7,7 +8,7 @@ export interface Activity {
 }
 
 export interface SensorDatapoint {
-  timestamp: string // assuming ISO string format
+  timestamp: string
   user_id: number
   activity_type: string | null
   duration: number | null
@@ -15,7 +16,7 @@ export interface SensorDatapoint {
 }
 
 export interface ContextType {
-  activityData: Activity[] // Using the Activity interface from earlier
-  sensorData: SensorDatapoint[] // Replace with the correct type
-  timeScope: TimeScope // Replace with the correct type
+  activityData: Activity[]
+  sensorData: SensorDatapoint[]
+  timeScope: TimeScope
 }

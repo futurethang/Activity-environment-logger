@@ -12,8 +12,8 @@ import {
   ReferenceLine,
 } from "recharts"
 import { Context } from "./App"
-import { roundToNearestHour } from "./utils/timezone"
-import { Activity } from "./global"
+import { convertToPacificTime, roundToNearestHour } from "./utils/timezone"
+import { Activity, ContextType } from "./global"
 
 type ExtendedActivity = Activity & { endTime: string }
 
@@ -26,11 +26,17 @@ const StackedLineGraph = () => {
 
   const formattedActivities = activityData.map(
     (activity: Activity): ExtendedActivity => {
-      const endTimeMoment = moment
-        .utc(activity.timestamp)
-        .add(activity.duration, "minutes")
+      // Convert the start timestamp to Pacific Time
+      const startTimeMoment = convertToPacificTime(activity.timestamp)
 
-      const endTime = endTimeMoment.format("YYYY-MM-DDTHH:mm:ss+00:00")
+      // Add the duration in milliseconds to the start time
+      const endTimeMoment = moment(startTimeMoment, "YYYY-MM-DDTHH:mm:ss").add(
+        activity.duration,
+        "milliseconds"
+      )
+
+      // Convert the end time to Pacific Time
+      const endTime = convertToPacificTime(endTimeMoment.format())
 
       return { ...activity, endTime }
     }
@@ -83,12 +89,13 @@ export default StackedLineGraph
 
 const stackAreas = (
   formattedActivities: ExtendedActivity[],
-  timeScope: string
+  timeScope: ContextType["timeScope"]
 ) => {
   let baseline = 0
 
   return formattedActivities.map((activity) => {
     baseline += 10
+    console.log({ activity })
     return timeScope === "minute" ? (
       <ReferenceArea
         x1={activity.timestamp.toString()}

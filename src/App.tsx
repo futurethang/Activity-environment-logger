@@ -6,14 +6,14 @@ import moment from "moment"
 import Header from "./Header"
 import "react-awesome-button/dist/styles.css" // Import default styles
 import Modal from "react-modal"
-import { Activity, ContextType } from "./global"
+import { Activity, ContextType, TimeScope } from "./global"
 import React from "react"
 import ActivityUi from "./ActivityUi"
 
 export const Context = React.createContext<ContextType>({
   activityData: [],
   sensorData: [],
-  timeScope: {},
+  timeScope: "minute",
 })
 
 Modal.setAppElement("#root")
@@ -22,10 +22,7 @@ function App() {
   const [activityData, setActivityData] = useState<Activity[]>([])
   const [sensorData, setSensorData] = useState([])
   const [timeScope, setTimeScope] = useState("minute")
-  const [timeRange, setTimeRange] = useState({
-    start: "2023-12-02 01:30:00",
-    end: "2023-12-02 13:30:00",
-  })
+  const [timeRange, setTimeRange] = useState<TimeScope>({})
 
   const supabase = createClient(
     import.meta.env.VITE_KH_SUPA_URL,
@@ -44,6 +41,23 @@ function App() {
 
   //   console.log("timeRange", timeRange)
   // }, [])
+
+  const resetTimeRange = () => {
+    const now = new Date()
+    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000) // 12 hours in milliseconds
+
+    const startPacificTime = convertToPacificTime(twelveHoursAgo.toISOString())
+    const endPacificTime = convertToPacificTime(now.toISOString())
+
+    setTimeRange({
+      start: startPacificTime,
+      end: endPacificTime,
+    })
+  }
+
+  useEffect(() => {
+    resetTimeRange()
+  }, [])
 
   useEffect(() => {
     const pstStart = convertToUTC(timeRange.start)
@@ -81,7 +95,7 @@ function App() {
 
         try {
           const { data } = await supabase
-            .from("sensor_data_2")
+            .from("sensor_data_4")
             .select("*")
             .gt("minute", start_date.toISOString())
             .lt("minute", end_date.toISOString())
@@ -97,6 +111,7 @@ function App() {
         try {
           const { data } = await supabase
             // RPC STYLE REQUEST TO GET BY HOUR
+            // TODO: Update to sensor_data_4
             .rpc("get_sensor_data_by_hour", {
               start_date,
               end_date,
@@ -126,8 +141,8 @@ function App() {
   }
 
   const shiftTimeRange = (direction: "forward" | "backward") => {
-    const startDate = new Date(timeRange.start)
-    const endDate = new Date(timeRange.end)
+    const startDate = new Date(timeRange.start!)
+    const endDate = new Date(timeRange.end!)
 
     if (direction === "forward") {
       startDate.setHours(startDate.getHours() + 6)

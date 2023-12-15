@@ -1,5 +1,5 @@
 import moment from "moment"
-import { useContext } from "react"
+import { useContext, useState } from "react"
 import {
   LineChart,
   Line,
@@ -19,6 +19,9 @@ type ExtendedActivity = Activity & { endTime: string }
 
 const StackedLineGraph = () => {
   const { activityData, sensorData, timeScope } = useContext(Context)
+  const [showTemperature, setShowTemperature] = useState(true)
+  const [showHumidity, setShowHumidity] = useState(true)
+  const [showCO2, setShowCO2] = useState(true)
 
   const formatXAxis = (tickItem: string) => {
     return moment(tickItem).format("hh:mm a")
@@ -44,6 +47,35 @@ const StackedLineGraph = () => {
 
   return (
     <div>
+      <div className="chart-controls">
+        {/* Toggle controls */}
+        <label>
+          <input
+            type="checkbox"
+            checked={showTemperature}
+            onChange={() => setShowTemperature(!showTemperature)}
+          />
+          Temperature
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showHumidity}
+            onChange={() => setShowHumidity(!showHumidity)}
+          />
+          Humidity
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showCO2}
+            onChange={() => setShowCO2(!showCO2)}
+          />
+          CO2
+        </label>
+        {/* ... other toggles */}
+      </div>
+
       <div className="my-4">
         <ResponsiveContainer width="100%" height={400}>
           <LineChart
@@ -52,31 +84,85 @@ const StackedLineGraph = () => {
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey={timeScope} tickFormatter={formatXAxis} />
-            <YAxis
-              label={{
-                value: "Temperature C° / Humidity %",
-                angle: -90,
-              }}
-            />
+
+            {/* Independent Y Axis for CO2 */}
+            {showCO2 && (
+              <YAxis
+                yAxisId="left"
+                orientation="left"
+                domain={["dataMin - 500", "dataMax + 500"]}
+                label={{ value: "CO2 ppm", angle: -90, position: "insideLeft" }}
+              />
+            )}
+
+            {/* Independent Y Axis for Temperature */}
+            {showTemperature && (
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                domain={["dataMin - 10", "dataMax + 10"]}
+                label={{
+                  value: "Temperature C°",
+                  angle: -90,
+                  position: "insideRight",
+                }}
+              />
+            )}
+
+            {/* Independent Y Axis for Humidity */}
+            {showHumidity && (
+              <YAxis
+                yAxisId="right2"
+                orientation="right"
+                domain={["dataMin - 10", "dataMax + 10"]}
+                label={{
+                  value: "Humidity %",
+                  angle: -90,
+                  position: "insideRight",
+                }}
+                axisLine={false}
+                tickLine={false}
+              />
+            )}
+
+            {/* Lines */}
+            {showCO2 && (
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey={timeScope === "minute" ? "co2_ppm" : "average_co2_ppm"}
+                stroke="#82ca9d"
+                dot={false}
+              />
+            )}
+            {showTemperature && (
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey={
+                  timeScope === "minute"
+                    ? "temperature_c"
+                    : "average_temperature"
+                }
+                stroke="#8884d8"
+                dot={false}
+              />
+            )}
+            {showHumidity && (
+              <Line
+                yAxisId="right2"
+                type="monotone"
+                dataKey={
+                  timeScope === "minute"
+                    ? "humidity_relative"
+                    : "average_humidity"
+                }
+                stroke="#9fc5e8"
+                dot={false}
+              />
+            )}
+
             <Tooltip />
-            <Line
-              type="monotone"
-              dataKey={
-                timeScope === "minute" ? "temperature_c" : "average_temperature"
-              }
-              stroke="#8884d8"
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey={
-                timeScope === "minute"
-                  ? "humidity_relative"
-                  : "average_humidity"
-              }
-              stroke="#9fc5e8"
-              dot={false}
-            />
             {stackAreas(formattedActivities, timeScope)}
           </LineChart>
         </ResponsiveContainer>

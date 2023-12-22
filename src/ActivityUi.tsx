@@ -203,11 +203,11 @@ const BlinkingGreenLight = () => {
   )
 }
 
-const getDiff = (start: Date) => {
+const getDiff = (start: string) => {
   return new Date().getTime() - new Date(start).getTime()
 }
 
-const RunningTimer = ({ start }: { start: Date }) => {
+const RunningTimer = ({ start }: { start: string }) => {
   const [seconds, setSeconds] = useState("")
   const [minutes, setMinutes] = useState("")
   const [hours, setHours] = useState("")

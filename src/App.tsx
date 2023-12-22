@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import StackedLineGraph from "./StackedLineGraph"
-import { convertToPacificTime, convertToUTC } from "./utils/timezone"
+import {
+  convertToPacificTime,
+  convertToUTC,
+  millisecondsToMinutes,
+} from "./utils/timezone"
 import moment from "moment"
 import Header from "./Header"
 import "react-awesome-button/dist/styles.css" // Import default styles
@@ -9,6 +13,7 @@ import Modal from "react-modal"
 import { Activity, ContextType, TimeScope } from "./global"
 import React from "react"
 import ActivityUi from "./ActivityUi"
+import ErrorBoundary from "./ErrorBoundary"
 
 export const Context = React.createContext<ContextType>({
   activityData: [],
@@ -22,30 +27,19 @@ function App() {
   const [activityData, setActivityData] = useState<Activity[]>([])
   const [sensorData, setSensorData] = useState([])
   const [timeScope, setTimeScope] = useState("minute")
-  const [timeRange, setTimeRange] = useState<TimeScope>({})
+  const [timeRange, setTimeRange] = useState<TimeScope>({
+    start: "",
+    end: "",
+  })
 
   const supabase = createClient(
     import.meta.env.VITE_KH_SUPA_URL,
     import.meta.env.VITE_KH_SUPA_KEY
   )
 
-  // TODO: put this in action when DB is updated to real time, not a HEX dump
-  // useLayoutEffect(() => {
-  //   const now = new Date()
-  //   const sixteenHoursAgo = new Date(now.getTime() - 1000 * 60 * 60 * 16)
-
-  //   setTimeRange({
-  //     start: sixteenHoursAgo.toISOString(),
-  //     end: now.toISOString(),
-  //   })
-
-  //   console.log("timeRange", timeRange)
-  // }, [])
-
   const resetTimeRange = () => {
     const now = new Date()
     const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000) // 12 hours in milliseconds
-
     const startPacificTime = convertToPacificTime(twelveHoursAgo.toISOString())
     const endPacificTime = convertToPacificTime(now.toISOString())
 
@@ -60,16 +54,16 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const pstStart = convertToUTC(timeRange.start)
-    const pstEnd = convertToUTC(timeRange.end)
+    const utcStart = convertToUTC(timeRange.start)
+    const utcEnd = convertToUTC(timeRange.end)
 
     const fetchActivityData = async (): Promise<Activity[]> => {
       try {
         const { data } = await supabase
           .from("activities")
           .select("*")
-          .gt("timestamp", pstStart)
-          .lt("timestamp", pstEnd)
+          .gt("timestamp", utcStart)
+          .lt("timestamp", utcEnd)
 
         return data || []
       } catch (error) {
@@ -79,8 +73,8 @@ function App() {
     }
 
     const fetchSensorData = async () => {
-      const start_date = new Date(pstStart)
-      const end_date = new Date(pstEnd)
+      const start_date = new Date(utcStart)
+      const end_date = new Date(utcEnd)
 
       const diffInMilliseconds = Math.abs(
         end_date.getTime() - start_date.getTime()
@@ -92,14 +86,11 @@ function App() {
       if (diffInMinutes < 1000) {
         setTimeScope("minute")
         console.log("less than 1000 minutes")
-
         try {
-          const { data } = await supabase
-            .from("sensor_data_4")
-            .select("*")
-            .gt("minute", start_date.toISOString())
-            .lt("minute", end_date.toISOString())
-
+          const { data } = await supabase.rpc("get_sensor_data_by_minute", {
+            start_date,
+            end_date,
+          })
           scopedData = data
         } catch (error) {
           console.log("error", error)
@@ -109,13 +100,10 @@ function App() {
         setTimeScope("hour")
         console.log("more than 1000 minutes")
         try {
-          const { data } = await supabase
-            // RPC STYLE REQUEST TO GET BY HOUR
-            // TODO: Update to sensor_data_4
-            .rpc("get_sensor_data_by_hour", {
-              start_date,
-              end_date,
-            })
+          const { data } = await supabase.rpc("get_sensor_data_by_hour", {
+            start_date,
+            end_date,
+          })
           scopedData = data
         } catch (error) {
           console.log("error", error)
@@ -130,6 +118,7 @@ function App() {
       .then(([aData, sData]) => {
         setActivityData(aData)
         setSensorData(sData)
+        console.log(sData)
       })
       .catch((error) => {
         console.log("An error occurred:", error)
@@ -190,38 +179,43 @@ function App() {
         <button onClick={() => shiftTimeRange("backward")}>6 hours ⬅️</button>
         <button onClick={() => shiftTimeRange("forward")}>6 hours ➡️</button>
       </div>
-      <Context.Provider value={{ activityData, sensorData, timeScope }}>
-        <StackedLineGraph />
-        <details open className="mb-4 transition duration-500 ease-in-out">
-          <summary className="font-bold">Activities</summary>
-          <div className=" w-full">
-            <ul>
-              {activityData.map((activity: Activity, i) => {
-                const formattedDate = moment(
-                  convertToPacificTime(activity.timestamp)
-                ).format("MM/DD hh:mm a")
-                return (
-                  <li
-                    key={`${activity.timestamp}-${i}`}
-                    className="grid grid-cols-4 gap-2 mb-1 font-roboto-mono text-xs"
-                  >
-                    <span className="ml-4">{formattedDate}</span>
-                    <span className="font-bold">{activity.activity_type}</span>
-                    <span className="ml-4">
-                      for {activity.duration} minutes
-                    </span>
-                    <div className="flex justify-end">
-                      <button className="bg-blue-400 text-xs p-1 w-12 h-8 rounded-sm">
-                        edit
-                      </button>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        </details>
-      </Context.Provider>
+      <ErrorBoundary>
+        <Context.Provider value={{ activityData, sensorData, timeScope }}>
+          <StackedLineGraph />
+          <details open className="mb-4 transition duration-500 ease-in-out">
+            <summary className="font-bold">Activities</summary>
+            <div className=" w-full">
+              <ul>
+                {activityData.map((activity: Activity, i) => {
+                  const formattedDate = moment(activity.timestamp).format(
+                    "MM/DD hh:mm a"
+                  )
+                  return (
+                    <li
+                      key={`${activity.timestamp}-${i}`}
+                      className="grid grid-cols-4 gap-2 mb-1 font-roboto-mono text-xs"
+                    >
+                      <span className="ml-4">{formattedDate}</span>
+                      <span className="font-bold">
+                        {activity.activity_type}
+                      </span>
+                      <span className="ml-4">
+                        for {millisecondsToMinutes(activity.duration || 0)}{" "}
+                        minutes
+                      </span>
+                      <div className="flex justify-end">
+                        <button className="bg-blue-400 text-xs p-1 w-12 h-8 rounded-sm">
+                          edit
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          </details>
+        </Context.Provider>
+      </ErrorBoundary>
     </div>
   )
 }

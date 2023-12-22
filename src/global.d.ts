@@ -1,13 +1,5 @@
 export interface Activity {
   id: number
-  timestamp: Date
-  user_id: number
-  activity_type: string | null
-  duration: number | null
-  additional_notes: string | null
-}
-
-export interface SensorDatapoint {
   timestamp: string
   user_id: number
   activity_type: string | null
@@ -15,8 +7,8 @@ export interface SensorDatapoint {
   additional_notes: string | null
 }
 
-interface SensorData {
-  minute?: Date | null
+export interface SensorData {
+  minute: string | null
   battery_pct?: number | null
   particles_03um?: number | null
   pm100_standard?: number | null
@@ -38,11 +30,11 @@ interface SensorData {
 
 export interface ContextType {
   activityData: Activity[]
-  sensorData: SensorDatapoint[]
+  sensorData: SensorData[]
   timeScope: string | undefined
 }
 
 export interface TimeScope {
-  start?: string | undefined
-  end?: string | undefined
+  start: string
+  end: string
 }

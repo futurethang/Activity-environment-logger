@@ -12,38 +12,51 @@ import {
   ReferenceLine,
 } from "recharts"
 import { Context } from "./App"
-import { convertToPacificTime, roundToNearestHour } from "./utils/timezone"
+import { roundToNearestHour } from "./utils/timezone"
 import { Activity, ContextType } from "./global"
 
 type ExtendedActivity = Activity & { endTime: string }
 
 const StackedLineGraph = () => {
   const { activityData, sensorData, timeScope } = useContext(Context)
+  // const [roundedSensorData, setRoundedSensorData] = useState<SensorData[]>()
   const [showTemperature, setShowTemperature] = useState(true)
   const [showHumidity, setShowHumidity] = useState(true)
   const [showCO2, setShowCO2] = useState(true)
 
   const formatXAxis = (tickItem: string) => {
+    // console.log({ tickItem })
     return moment(tickItem).format("hh:mm a")
   }
 
+  // useLayoutEffect(() => {
+  //   const roundedSensorData = sensorData.map((data: SensorData) => {
+  //     const roundedTimestamp = roundTime(data.minute, 1, true)
+  //     return { ...data, minute: roundedTimestamp }
+  //   })
+  //   setRoundedSensorData(roundedSensorData)
+  // }, [])
+
   const formattedActivities = activityData.map(
     (activity: Activity): ExtendedActivity => {
-      // Convert the start timestamp to Pacific Time
-      const startTimeMoment = convertToPacificTime(activity.timestamp)
+      const startTimeMoment = activity.timestamp
 
-      // Add the duration in milliseconds to the start time
-      const endTimeMoment = moment(startTimeMoment, "YYYY-MM-DDTHH:mm:ss").add(
-        activity.duration,
-        "milliseconds"
-      )
+      // const roundedTimestamp = moment(roundTime(startTimeMoment, 1, true))
 
-      // Convert the end time to Pacific Time
-      const endTime = convertToPacificTime(endTimeMoment.format())
+      const endTime = moment(startTimeMoment)
+        .clone()
+        .add(activity.duration, "milliseconds")
+        .toISOString()
 
-      return { ...activity, endTime }
+      return {
+        ...activity,
+        timestamp: startTimeMoment,
+        endTime,
+      }
     }
   )
+
+  // console.log(sensorData, roundedSensorData)
 
   return (
     <div>
@@ -162,7 +175,7 @@ const StackedLineGraph = () => {
               />
             )}
 
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             {stackAreas(formattedActivities, timeScope)}
           </LineChart>
         </ResponsiveContainer>
@@ -184,7 +197,7 @@ const stackAreas = (
     console.log({ activity })
     return timeScope === "minute" ? (
       <ReferenceArea
-        x1={activity.timestamp.toString()}
+        x1={activity.timestamp}
         x2={activity.endTime}
         y1={baseline}
         y2={baseline + 10}
@@ -205,6 +218,24 @@ const stackAreas = (
       />
     )
   })
+}
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="custom-tooltip">
+        <p>{`Timestamp: ${moment(data.rounded_minute).format(
+          "DD hh:mm a"
+        )}`}</p>
+        <p>{`Temperature: ${data.temperature_c} C°`}</p>
+        <p>{`Humidity: ${data.humidity_relative} %`}</p>
+        <p>{`CO2: ${data.co2_ppm} ppm`}</p>
+      </div>
+    )
+  }
+
+  return null
 }
 
 function toTitleCase(str: string) {

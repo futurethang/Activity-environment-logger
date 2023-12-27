@@ -9,59 +9,42 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceArea,
-  ReferenceLine,
+  // ReferenceLine,
 } from "recharts"
 import { Context } from "./App"
-import { roundToNearestHour } from "./utils/timezone"
 import { Activity, ContextType } from "./global"
 
 type ExtendedActivity = Activity & { endTime: string }
 
 const StackedLineGraph = () => {
   const { activityData, sensorData, timeScope } = useContext(Context)
-  // const [roundedSensorData, setRoundedSensorData] = useState<SensorData[]>()
   const [showTemperature, setShowTemperature] = useState(true)
   const [showHumidity, setShowHumidity] = useState(true)
   const [showCO2, setShowCO2] = useState(true)
 
   const formatXAxis = (tickItem: string) => {
-    // console.log({ tickItem })
     return moment(tickItem).format("hh:mm a")
   }
 
-  // useLayoutEffect(() => {
-  //   const roundedSensorData = sensorData.map((data: SensorData) => {
-  //     const roundedTimestamp = roundTime(data.minute, 1, true)
-  //     return { ...data, minute: roundedTimestamp }
-  //   })
-  //   setRoundedSensorData(roundedSensorData)
-  // }, [])
-
   const formattedActivities = activityData.map(
     (activity: Activity): ExtendedActivity => {
-      const startTimeMoment = activity.timestamp
-
-      // const roundedTimestamp = moment(roundTime(startTimeMoment, 1, true))
-
-      const endTime = moment(startTimeMoment)
+      const startTimeMoment = moment(activity.rounded_timestamp)
+      const endTime = startTimeMoment
         .clone()
         .add(activity.duration, "milliseconds")
-        .toISOString()
+        .startOf("minute")
 
       return {
         ...activity,
-        timestamp: startTimeMoment,
-        endTime,
+        timestamp: startTimeMoment.format("YYYY-MM-DDTHH:mm:ss"),
+        endTime: endTime.format("YYYY-MM-DDTHH:mm:ss"),
       }
     }
   )
 
-  // console.log(sensorData, roundedSensorData)
-
   return (
     <div>
-      <div className="chart-controls">
-        {/* Toggle controls */}
+      <div className="chart-controls flex gap-2">
         <label>
           <input
             type="checkbox"
@@ -86,7 +69,6 @@ const StackedLineGraph = () => {
           />
           CO2
         </label>
-        {/* ... other toggles */}
       </div>
 
       <div className="my-4">
@@ -114,6 +96,7 @@ const StackedLineGraph = () => {
                 yAxisId="right"
                 orientation="right"
                 domain={["dataMin - 10", "dataMax + 10"]}
+                tickFormatter={(tickItem) => `${Math.floor(tickItem)} C°`}
                 label={{
                   value: "Temperature C°",
                   angle: -90,
@@ -128,6 +111,7 @@ const StackedLineGraph = () => {
                 yAxisId="right2"
                 orientation="right"
                 domain={["dataMin - 10", "dataMax + 10"]}
+                tickFormatter={(tickItem) => `${Math.floor(tickItem)} C°`}
                 label={{
                   value: "Humidity %",
                   angle: -90,
@@ -143,7 +127,9 @@ const StackedLineGraph = () => {
               <Line
                 yAxisId="left"
                 type="monotone"
-                dataKey={timeScope === "minute" ? "co2_ppm" : "average_co2_ppm"}
+                dataKey={
+                  timeScope === "rounded_minute" ? "co2_ppm" : "average_co2_ppm"
+                }
                 stroke="#82ca9d"
                 dot={false}
               />
@@ -153,7 +139,7 @@ const StackedLineGraph = () => {
                 yAxisId="right"
                 type="monotone"
                 dataKey={
-                  timeScope === "minute"
+                  timeScope === "rounded_minute"
                     ? "temperature_c"
                     : "average_temperature"
                 }
@@ -166,7 +152,7 @@ const StackedLineGraph = () => {
                 yAxisId="right2"
                 type="monotone"
                 dataKey={
-                  timeScope === "minute"
+                  timeScope === "rounded_minute"
                     ? "humidity_relative"
                     : "average_humidity"
                 }
@@ -191,32 +177,36 @@ const stackAreas = (
   timeScope: ContextType["timeScope"]
 ) => {
   let baseline = 0
+  const baseLineIncrement = 400
 
   return formattedActivities.map((activity) => {
-    baseline += 10
+    baseline += baseLineIncrement
     console.log({ activity })
-    return timeScope === "minute" ? (
+    return timeScope === "rounded_minute" ? (
       <ReferenceArea
-        x1={activity.timestamp}
+        x1={activity.rounded_timestamp}
         x2={activity.endTime}
+        yAxisId={"left"}
         y1={baseline}
-        y2={baseline + 10}
+        y2={baseline + baseLineIncrement}
         ifOverflow="extendDomain"
         label={toTitleCase(activity.activity_type || "")}
         strokeOpacity={0.3}
         fill="green"
         fillOpacity={0.5}
+        key={`${activity.timestamp}-${activity.endTime}`}
       />
-    ) : (
-      <ReferenceLine
-        x={moment(roundToNearestHour(activity.timestamp)).format("hh:mm a")}
-        stroke="green"
-        label={{
-          value: activity.activity_type || "Unknown",
-        }}
-        strokeOpacity={0.7}
-      />
-    )
+    ) : null
+    // <ReferenceLine
+    //   x={moment(roundToNearestHour(activity.rounded_timestamp)).format(
+    //     "hh:mm a"
+    //   )}
+    //   stroke="green"
+    //   label={{
+    //     value: activity.activity_type || "Unknown",
+    //   }}
+    //   strokeOpacity={0.7}
+    // />
   })
 }
 

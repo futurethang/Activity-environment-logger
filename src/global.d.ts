@@ -1,6 +1,7 @@
 export interface Activity {
   id: number
   timestamp: string
+  rounded_timestamp: string
   user_id: number
   activity_type: string | null
   duration: number | null

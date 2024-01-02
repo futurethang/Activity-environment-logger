@@ -35,15 +35,42 @@ const customStyles = {
 } as React.CSSProperties
 
 export default function ActivityUi({ supabase }: { supabase: SupabaseClient }) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isInputModalOpen, setIsInputModalOpen] = useState(false)
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false)
   const [activityType, setActivityType] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState("")
   const [liveActivities, setLiveActivities] = useState<Activity[]>([])
+  const [activityLog, setActivityLog] = useState<Activity[]>([])
 
   useEffect(() => {
     readLocalStorage()
   }, [])
+
+  useEffect(() => {
+    const fetchActivityData = async (): Promise<Activity[]> => {
+      const end_date = new Date()
+      const start_date = new Date(end_date.getTime() - 1000 * 60 * 60 * 24 * 30) // 30 days in milliseconds
+      try {
+        const { data } = await supabase.rpc("get_activity_data", {
+          start_date,
+          end_date,
+        })
+        return data
+      } catch (error) {
+        console.log("error", error)
+        throw error
+      }
+    }
+
+    if (!isLogsModalOpen) {
+      return
+    }
+
+    fetchActivityData().then((data) => {
+      setActivityLog(data)
+    })
+  }, [isLogsModalOpen])
 
   const readLocalStorage = () => {
     const clientLiveActivities = localStorage.getItem("liveActivities")
@@ -90,23 +117,16 @@ export default function ActivityUi({ supabase }: { supabase: SupabaseClient }) {
       }
       activity = data && data[0]
       writeLocalStorage(activity)
-      setIsModalOpen(false)
+      setIsInputModalOpen(false)
       setActivityType("")
     } catch (error) {
       console.error(error)
     } finally {
       setSubmitting(false)
     }
-    // // console.info("data", data)
-    // if (error) {
-    //   setMessage(`Error: ${error.message}`)
-    // } else {
-    //   setMessage("Activity logged successfully!")
-    // }
   }
 
   const endActivity = async (activity: Activity) => {
-    console.log("endActivity", activity)
     const duration = getDiff(activity.timestamp)
     const { data, error } = await supabase
       .from("activities")
@@ -127,21 +147,33 @@ export default function ActivityUi({ supabase }: { supabase: SupabaseClient }) {
 
   return (
     <>
-      <div className="w-full flex justify-center">
+      <div className="w-full flex justify-center gap-4 mb-4">
         <AwesomeButton
           style={customStyles}
           type="primary"
           onPress={() => {
-            console.log("Log Activity button clicked")
-            setIsModalOpen(true)
+            setIsInputModalOpen(true)
           }}
+          disabled={isLogsModalOpen}
         >
           Log Activity
         </AwesomeButton>
+        <AwesomeButton
+          style={customStyles}
+          type="secondary"
+          onPress={() => {
+            setIsLogsModalOpen(true)
+          }}
+          disabled={isInputModalOpen}
+        >
+          Activity Log
+        </AwesomeButton>
       </div>
+
+      {/* LOG A NEW ACTIVITY DIALOG */}
       <Modal
-        isOpen={isModalOpen}
-        onRequestClose={() => setIsModalOpen(false)}
+        isOpen={isInputModalOpen}
+        onRequestClose={() => setIsInputModalOpen(false)}
         style={customModalStyles}
         contentLabel="Activity Modal"
       >
@@ -164,6 +196,26 @@ export default function ActivityUi({ supabase }: { supabase: SupabaseClient }) {
           </p>
         )}
       </Modal>
+
+      {/* LIST OF RECENT ACTIVITIES */}
+      <Modal
+        isOpen={isLogsModalOpen}
+        onRequestClose={() => setIsLogsModalOpen(false)}
+        style={customModalStyles}
+        contentLabel="Activity Modal"
+      >
+        <ul>
+          {activityLog.length > 0
+            ? activityLog.map((activity, index) => (
+                <li key={index} className="">
+                  {activity.activity_type}
+                </li>
+              ))
+            : null}
+        </ul>
+      </Modal>
+
+      {/* LIST OF CURRENTLY RUNNING ACTIVITIES */}
       <ul>
         {liveActivities.map((activity, index) => (
           <li

@@ -171,11 +171,6 @@ function App() {
           className="p-1 rounded-md"
         />
       </div>
-      {/* <div className="bg-slate-900 p-2 w-full text-center my-4 rounded-md text-white">
-        <h2>
-          Showing data from {timeRange.start} - {timeRange.end}
-        </h2>
-      </div> */}
       <div className="w-full flex justify-between">
         <button onClick={() => shiftTimeRange("backward")}>6 hours ⬅️</button>
         <button onClick={() => shiftTimeRange("forward")}>6 hours ➡️</button>
@@ -183,38 +178,33 @@ function App() {
       <ErrorBoundary>
         <Context.Provider value={{ activityData, sensorData, timeScope }}>
           <StackedLineGraph />
-          <details open className="mb-4 transition duration-500 ease-in-out">
-            <summary className="font-bold">Activities</summary>
-            <div className=" w-full">
-              <ul>
-                {activityData.map((activity: Activity, i) => {
-                  const formattedDate = moment(
-                    activity.rounded_timestamp
-                  ).format("MM/DD hh:mm a")
-                  return (
-                    <li
-                      key={`${activity.timestamp}-${i}`}
-                      className="grid grid-cols-4 gap-2 mb-1 font-roboto-mono text-xs"
-                    >
-                      <span className="ml-4">{formattedDate}</span>
-                      <span className="font-bold">
-                        {activity.activity_type}
-                      </span>
-                      <span className="ml-4">
-                        for {millisecondsToMinutes(activity.duration || 0)}{" "}
-                        minutes
-                      </span>
-                      <div className="flex justify-end">
-                        <button className="bg-blue-400 text-xs p-1 w-12 h-8 rounded-sm">
-                          edit
-                        </button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          </details>
+          <div className="w-full mt-4">
+            <ul>
+              {activityData.map((activity: Activity, i) => {
+                const formattedDate = moment(activity.rounded_timestamp).format(
+                  "MM/DD hh:mm a"
+                )
+                return (
+                  <li
+                    key={`${activity.timestamp}-${i}`}
+                    className="grid grid-cols-4 gap-2 mb-1 font-roboto-mono text-xs"
+                  >
+                    <span className="ml-4">{formattedDate}</span>
+                    <span className="font-bold">{activity.activity_type}</span>
+                    <span className="ml-4">
+                      for {millisecondsToMinutes(activity.duration || 0)}{" "}
+                      minutes
+                    </span>
+                    <div className="flex justify-end">
+                      <button className="bg-blue-400 text-xs p-1 w-12 h-8 rounded-sm">
+                        edit
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         </Context.Provider>
       </ErrorBoundary>
     </div>

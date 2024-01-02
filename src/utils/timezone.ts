@@ -13,7 +13,8 @@ export function convertToPacificTime(utcTime: string) {
 }
 
 export function millisecondsToMinutes(milliseconds: number) {
-  return milliseconds / 1000 / 60
+  const formattedTime = milliseconds / 1000 / 60
+  return Math.floor(formattedTime)
 }
 
 export function roundToNearestHour(timestamp: string) {

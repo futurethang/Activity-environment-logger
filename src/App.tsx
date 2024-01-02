@@ -134,6 +134,7 @@ function App() {
     const endDate = new Date(timeRange.end!)
 
     if (direction === "forward") {
+      if (endDate >= new Date()) return
       startDate.setHours(startDate.getHours() + 6)
       endDate.setHours(endDate.getHours() + 6)
     } else if (direction === "backward") {
@@ -151,7 +152,7 @@ function App() {
     <div className="App p-8 w-full sm:w-[600px] mx-auto">
       <Header />
       <ActivityUi supabase={supabase} />
-      <div className="mb-4 mt-8">
+      <div className="mb-4 mt-8 flex justify-between items-center">
         <input
           type="datetime-local"
           name="start"

@@ -16,11 +16,21 @@ import { Activity, ContextType } from "./global"
 
 type ExtendedActivity = Activity & { endTime: string }
 
+type Metrics = {
+  [key: string]: boolean
+}
+
 const StackedLineGraph = () => {
   const { activityData, sensorData, timeScope } = useContext(Context)
-  const [showTemperature, setShowTemperature] = useState(true)
-  const [showHumidity, setShowHumidity] = useState(true)
-  const [showCO2, setShowCO2] = useState(true)
+
+  const initialMetrics: Metrics = {
+    temperature: true,
+    humidity: true,
+    co2: true,
+  }
+
+  const [metricsVisibility, setMetricsVisibility] =
+    useState<Metrics>(initialMetrics)
 
   const formatXAxis = (tickItem: string) => {
     return moment(tickItem).format("hh:mm a")
@@ -42,35 +52,27 @@ const StackedLineGraph = () => {
     }
   )
 
+  const handleMetricToggle = (
+    metric: keyof Metrics,
+    event: React.MouseEvent<HTMLInputElement>
+  ) => {
+    // event.preventDefault()
+    if (event.ctrlKey || event.shiftKey) {
+      // Toggle the selected metric while keeping the others as is
+      setMetricsVisibility((prev) => ({ ...prev, [metric]: !prev[metric] }))
+    } else {
+      // Deselect all but the current metric
+      const newVisibility = Object.keys(initialMetrics).reduce<Metrics>(
+        (acc, key) => ({ ...acc, [key]: key === metric }),
+        {} as Metrics
+      )
+      setMetricsVisibility(newVisibility)
+    }
+    console.log(metricsVisibility)
+  }
+
   return (
     <div>
-      <div className="chart-controls flex gap-2">
-        <label>
-          <input
-            type="checkbox"
-            checked={showTemperature}
-            onChange={() => setShowTemperature(!showTemperature)}
-          />
-          Temperature
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={showHumidity}
-            onChange={() => setShowHumidity(!showHumidity)}
-          />
-          Humidity
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={showCO2}
-            onChange={() => setShowCO2(!showCO2)}
-          />
-          CO2
-        </label>
-      </div>
-
       <div className="my-4">
         <ResponsiveContainer width="100%" height={400}>
           <LineChart
@@ -81,49 +83,60 @@ const StackedLineGraph = () => {
             <XAxis dataKey={timeScope} tickFormatter={formatXAxis} />
 
             {/* Independent Y Axis for CO2 */}
-            {showCO2 && (
-              <YAxis
-                yAxisId="left"
-                orientation="left"
-                domain={["dataMin - 500", "dataMax + 500"]}
-                label={{ value: "CO2 ppm", angle: -90, position: "insideLeft" }}
-              />
-            )}
+            {Object.values(metricsVisibility).filter((val) => val).length ===
+              1 &&
+              metricsVisibility.co2 && (
+                <YAxis
+                  yAxisId="left"
+                  orientation="left"
+                  domain={["dataMin - 500", "dataMax + 500"]}
+                  tickFormatter={(tickItem) => `${Math.floor(tickItem)} ppm`}
+                  label={{
+                    value: "CO2 ppm",
+                    angle: -90,
+                    position: "insideLeft",
+                  }}
+                />
+              )}
 
             {/* Independent Y Axis for Temperature */}
-            {showTemperature && (
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                domain={["dataMin - 10", "dataMax + 10"]}
-                tickFormatter={(tickItem) => `${Math.floor(tickItem)} C°`}
-                label={{
-                  value: "Temperature C°",
-                  angle: -90,
-                  position: "insideRight",
-                }}
-              />
-            )}
+            {Object.values(metricsVisibility).filter((val) => val).length ===
+              1 &&
+              metricsVisibility.temperature && (
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={["dataMin - 10", "dataMax + 10"]}
+                  tickFormatter={(tickItem) => `${Math.floor(tickItem)} C°`}
+                  label={{
+                    value: "Temperature C°",
+                    angle: -90,
+                    position: "insideRight",
+                  }}
+                />
+              )}
 
             {/* Independent Y Axis for Humidity */}
-            {showHumidity && (
-              <YAxis
-                yAxisId="right2"
-                orientation="right"
-                domain={["dataMin - 10", "dataMax + 10"]}
-                tickFormatter={(tickItem) => `${Math.floor(tickItem)} C°`}
-                label={{
-                  value: "Humidity %",
-                  angle: -90,
-                  position: "insideRight",
-                }}
-                axisLine={false}
-                tickLine={false}
-              />
-            )}
+            {Object.values(metricsVisibility).filter((val) => val).length ===
+              1 &&
+              metricsVisibility.humidity && (
+                <YAxis
+                  yAxisId="right2"
+                  orientation="right"
+                  domain={["dataMin - 10", "dataMax + 10"]}
+                  tickFormatter={(tickItem) => `${Math.floor(tickItem)} %`}
+                  label={{
+                    value: "Humidity %",
+                    angle: -90,
+                    position: "insideRight",
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+              )}
 
             {/* Lines */}
-            {showCO2 && (
+            {metricsVisibility.co2 && (
               <Line
                 yAxisId="left"
                 type="monotone"
@@ -134,7 +147,7 @@ const StackedLineGraph = () => {
                 dot={false}
               />
             )}
-            {showTemperature && (
+            {metricsVisibility.temperature && (
               <Line
                 yAxisId="right"
                 type="monotone"
@@ -147,7 +160,7 @@ const StackedLineGraph = () => {
                 dot={false}
               />
             )}
-            {showHumidity && (
+            {metricsVisibility.humidity && (
               <Line
                 yAxisId="right2"
                 type="monotone"
@@ -165,6 +178,20 @@ const StackedLineGraph = () => {
             {stackAreas(formattedActivities, timeScope)}
           </LineChart>
         </ResponsiveContainer>
+      </div>
+
+      <div className="chart-controls flex gap-2">
+        {Object.entries(metricsVisibility).map(([metric, isVisible]) => (
+          <label key={metric} className="p-2">
+            <input
+              className="mr-2"
+              type="checkbox"
+              checked={isVisible}
+              onClick={(e) => handleMetricToggle(metric as keyof Metrics, e)}
+            />
+            {metric.charAt(0).toUpperCase() + metric.slice(1)}
+          </label>
+        ))}
       </div>
     </div>
   )

@@ -13,6 +13,7 @@ import {
 } from "recharts"
 import { Context } from "./App"
 import { Activity, ContextType } from "./global"
+import { toTitleCase } from "./utils/textFormatting"
 
 type ExtendedActivity = Activity & { endTime: string }
 
@@ -217,10 +218,16 @@ const stackAreas = (
         y1={baseline}
         y2={baseline + baseLineIncrement}
         ifOverflow="extendDomain"
-        label={toTitleCase(activity.activity_type || "")}
+        label={{
+          value: toTitleCase(activity.activity_type || ""),
+          position: "insideBottom",
+          fill: "#fff", // Font color
+          fontSize: 14, // Font size
+          fontWeight: "bold", // Font weight
+        }}
         strokeOpacity={0.3}
         fill="green"
-        fillOpacity={0.5}
+        fillOpacity={0.75}
         key={`${activity.timestamp}-${activity.endTime}`}
       />
     ) : null
@@ -253,10 +260,4 @@ const CustomTooltip = ({ active, payload }: any) => {
   }
 
   return null
-}
-
-function toTitleCase(str: string) {
-  return str.replace(/\w\S*/g, function (txt) {
-    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-  })
 }

@@ -35,6 +35,10 @@ export interface ContextType {
   timeScope: string | undefined
 }
 
+export interface TimeContextType {
+  start: string
+  end: string
+}
 export interface TimeScope {
   start: string
   end: string

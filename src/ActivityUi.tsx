@@ -3,6 +3,9 @@ import React, { useEffect, useState } from "react"
 import { AwesomeButton } from "react-awesome-button"
 import Modal from "react-modal"
 import { Activity } from "./global"
+import { millisecondsToMinutes } from "./utils/timezone"
+import { format, parseISO } from "date-fns"
+import { toTitleCase } from "./utils/textFormatting"
 
 const customModalStyles = {
   content: {
@@ -204,11 +207,25 @@ export default function ActivityUi({ supabase }: { supabase: SupabaseClient }) {
         style={customModalStyles}
         contentLabel="Activity Modal"
       >
-        <ul>
+        <ul className="flex flex-col gap-2 h-[200px] p-4">
           {activityLog.length > 0
             ? activityLog.map((activity, index) => (
-                <li key={index} className="">
-                  {activity.activity_type}
+                <li
+                  key={index}
+                  className="flex flex-col font-bold p-2 bg-slate-300 rounded-md text-slate-800"
+                  onClick={() => {
+                    console.log("clicked")
+                  }}
+                >
+                  <h4>{toTitleCase(activity.activity_type!)}</h4>
+                  {`
+                      ${format(
+                        parseISO(activity.rounded_timestamp),
+                        "MM/dd/yy hh:mm a"
+                      )}
+                      for
+                      ${millisecondsToMinutes(activity.duration!)} minutes
+                    `}
                 </li>
               ))
             : null}

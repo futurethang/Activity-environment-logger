@@ -10,7 +10,7 @@ import moment from "moment"
 import Header from "./Header"
 import "react-awesome-button/dist/styles.css" // Import default styles
 import Modal from "react-modal"
-import { Activity, ContextType, TimeScope } from "./global"
+import { Activity, ContextType, TimeScope, TimeContextType } from "./global"
 import React from "react"
 import ActivityUi from "./ActivityUi"
 import ErrorBoundary from "./ErrorBoundary"
@@ -19,6 +19,11 @@ export const Context = React.createContext<ContextType>({
   activityData: [],
   sensorData: [],
   timeScope: "minute",
+})
+
+export const TimeContext = React.createContext<TimeContextType>({
+  start: "",
+  end: "",
 })
 
 Modal.setAppElement("#root")
